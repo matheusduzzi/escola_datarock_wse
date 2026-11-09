@@ -1,0 +1,779 @@
+{
+  "name": "Monitor de preço: projeto final, três alvos",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "id": "0e5e0012-0000-4000-8000-000000000001",
+      "name": "Todo dia às 7h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "0e5e0012-0000-4000-8000-000000000002",
+      "name": "Rodar agora",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Código do nó Code \"Páginas da loja\", no modo Run Once for All Items.\n// É o mesmo texto que está dentro de monitor-final.json.\n//\n// Sai: um item por página da loja que o monitor baixa com o código próprio.\n// A página 2 serve de gabarito para o Firecrawl, que raspa a mesma página.\n// O nó ignora o que entra: quando o fluxo volta para cá depois de uma espera,\n// as duas páginas são pedidas de novo.\nreturn [\n  { json: { pagina: 1, url: 'https://books.toscrape.com/' } },\n  { json: { pagina: 2, url: 'https://books.toscrape.com/catalogue/page-2.html' } },\n];"
+      },
+      "id": "0e5e0012-0000-4000-8000-000000000003",
+      "name": "Páginas da loja",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "curso-web-scraping-em-escala (estudo)"
+            }
+          ]
+        },
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 1000
+            }
+          },
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "0e5e0012-0000-4000-8000-000000000004",
+      "name": "Baixar as páginas da loja",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Código do nó Code \"Ver as respostas da loja\", no modo Run Once for All Items.\n// É o mesmo texto que está dentro de monitor-final.json.\n//\n// Entra: uma resposta por página, do nó \"Baixar as páginas da loja\", com o\n// corpo em \"data\" e o status em \"statusCode\" (o nó não para em status ruim).\n// Sai: as mesmas respostas, com \"situacao\" igual em todas:\n//   ok      todas vieram bem: segue para tirar os livros;\n//   tentar  alguma veio 429 ou 5xx e ainda dá para tentar de novo;\n//   parar   o site recusou, pediu login, mostrou captcha ou não melhorou.\nconst TENTATIVAS = 3; // a primeira e mais duas\n\nconst paginas = $('Páginas da loja').all().map((i) => i.json);\nconst tentativa = $runIndex + 1;\nconst respostas = $input.all().map((item, i) => {\n  const r = item.json;\n  const corpo = String(r.data ?? '');\n  const status = Number(r.statusCode);\n  let motivo = '';\n  let tipo = 'ok';\n  if ([401, 403, 407].includes(status)) {\n    tipo = 'parar';\n    motivo = `a loja recusou o pedido (${status})`;\n  } else if (/type=[\"']?password/i.test(corpo)) {\n    tipo = 'parar';\n    motivo = 'a loja respondeu com um formulário de login';\n  } else if (/captcha/i.test(corpo)) {\n    tipo = 'parar';\n    motivo = 'a loja respondeu com um captcha';\n  } else if (status === 429 || status >= 500) {\n    tipo = 'tentar';\n    motivo = `a loja respondeu ${status}`;\n  } else if (status !== 200) {\n    tipo = 'parar';\n    motivo = `a loja respondeu ${status}`;\n  }\n  return { ...r, ...paginas[i], tipo, motivo };\n});\n\nconst recusa = respostas.find((r) => r.tipo === 'parar');\nconst ruim = respostas.find((r) => r.tipo === 'tentar');\nlet situacao = 'ok';\nlet detalhe = `tentativa ${tentativa}: as ${respostas.length} páginas vieram bem`;\nif (recusa) {\n  situacao = 'parar';\n  detalhe = `Parei: na página ${recusa.pagina}, ${recusa.motivo}. Não tente passar por isso: veja o que mudou no site.`;\n} else if (ruim && tentativa < TENTATIVAS) {\n  situacao = 'tentar';\n  detalhe = `tentativa ${tentativa}: na página ${ruim.pagina}, ${ruim.motivo}; vou esperar e pedir de novo`;\n} else if (ruim) {\n  situacao = 'parar';\n  detalhe = `Parei: na página ${ruim.pagina}, ${ruim.motivo} nas ${TENTATIVAS} tentativas.`;\n}\n\nreturn respostas.map(({ tipo, motivo, ...r }) => ({ json: { ...r, situacao, detalhe, tentativa } }));"
+      },
+      "id": "0e5e0012-0000-4000-8000-000000000005",
+      "name": "Ver as respostas da loja",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c0000012-0000-4000-8000-000000000006",
+              "leftValue": "={{ $json.situacao }}",
+              "rightValue": "parar",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "0e5e0012-0000-4000-8000-000000000006",
+      "name": "O site recusou?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        880,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "errorType": "errorMessage",
+        "errorMessage": "={{ $json.detalhe }}"
+      },
+      "id": "0e5e0012-0000-4000-8000-000000000007",
+      "name": "Parar: o site recusou",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c0000012-0000-4000-8000-000000000008",
+              "leftValue": "={{ $json.situacao }}",
+              "rightValue": "tentar",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "0e5e0012-0000-4000-8000-000000000008",
+      "name": "Tentar de novo?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1100,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "resume": "timeInterval",
+        "amount": "={{ 5 * Math.pow(2, $runIndex) }}",
+        "unit": "seconds"
+      },
+      "id": "0e5e0012-0000-4000-8000-000000000009",
+      "name": "Esperar mais a cada tentativa",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1320,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "dataPropertyName": "data",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "titulo",
+              "cssSelector": "article.product_pod h3 a",
+              "returnValue": "attribute",
+              "attribute": "title",
+              "returnArray": true
+            },
+            {
+              "key": "preco",
+              "cssSelector": "article.product_pod p.price_color",
+              "returnArray": true
+            },
+            {
+              "key": "disponibilidade",
+              "cssSelector": "article.product_pod p.instock.availability",
+              "returnArray": true
+            },
+            {
+              "key": "endereco",
+              "cssSelector": "article.product_pod h3 a",
+              "returnValue": "attribute",
+              "attribute": "href",
+              "returnArray": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0e5e0012-0000-4000-8000-000000000010",
+      "name": "Tirar os livros",
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        1320,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.scrape.do/",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "url",
+              "value": "https://quotes.toscrape.com/js/"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "0e5e0012-0000-4000-8000-000000000011",
+      "name": "Citações pelo scrape.do",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1540,
+        100
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.firecrawl.dev/v2/scrape",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"url\": \"https://books.toscrape.com/catalogue/page-2.html\",\n  \"formats\": [\n    {\n      \"type\": \"json\",\n      \"prompt\": \"Extraia todos os livros da lista da página, sem pular nenhum. Não invente valor que não está na página.\",\n      \"schema\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"livros\": {\n            \"type\": \"array\",\n            \"description\": \"Todos os livros da lista, na ordem em que aparecem na página.\",\n            \"items\": {\n              \"type\": \"object\",\n              \"properties\": {\n                \"titulo\": {\n                  \"type\": \"string\",\n                  \"description\": \"Título do livro como aparece na lista.\"\n                },\n                \"preco\": {\n                  \"type\": \"number\",\n                  \"description\": \"Preço em libras, só o número, sem o símbolo. Ex.: 51.77.\"\n                },\n                \"em_estoque\": {\n                  \"type\": \"boolean\",\n                  \"description\": \"true se o livro aparece como \\\"In stock\\\"; false se não.\"\n                },\n                \"url\": {\n                  \"type\": \"string\",\n                  \"description\": \"Endereço do link da página do livro.\"\n                }\n              },\n              \"required\": [\n                \"titulo\",\n                \"preco\",\n                \"em_estoque\",\n                \"url\"\n              ]\n            }\n          }\n        },\n        \"required\": [\n          \"livros\"\n        ]\n      }\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "0e5e0012-0000-4000-8000-000000000012",
+      "name": "Página 2 pelo Firecrawl",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1760,
+        100
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Código do nó Code \"Montar a rodada\", no modo Run Once for All Items.\n// É o mesmo texto que está dentro de monitor-final.json.\n//\n// Entra: a resposta do Firecrawl (página 2). Lê também, pelos nomes dos nós,\n// os livros das duas páginas baixadas com o código próprio e as citações que\n// vieram pelo scrape.do.\n// Sai: um item só, com as linhas da rodada dos três alvos, a lista \"problemas\",\n// a conferência do Firecrawl contra o código próprio e o custo da rodada.\n// Lista \"problemas\" vazia: a rodada pode ser gravada.\n\n// As regras de saúde. Os números são decisão de quem usa o monitor.\nconst MAX_VAZIOS = 0.1; // até 10% de um campo vazio ainda passa\nconst MINIMO = { 'loja-pagina-1': 16, 'loja-pagina-2': 16, citacoes: 8 }; // as páginas trazem 20, 20 e 10\n// Créditos pela tabela, para quando a resposta não diz quanto custou.\nconst TABELA_SCRAPEDO = 1; // datacenter, sem render\nconst TABELA_FIRECRAWL = 5; // scrape com JSON: 1 da página e 4 do JSON\n\nconst rodada = $now.toFormat('yyyy-MM-dd');\nconst problemas = [];\nconst linhas = [];\n\nconst lista = (v) => (Array.isArray(v) ? v : v == null || v === '' ? [] : [v]);\nconst lerPreco = (texto) => {\n  const m = String(texto ?? '').match(/£\\s*(\\d+\\.\\d{2})/);\n  return m ? m[1] : '';\n};\nconst lerEstoque = (texto) => {\n  const t = String(texto ?? '');\n  if (/out of stock/i.test(t)) return 'nao';\n  if (/\\bin stock\\b/i.test(t)) return 'sim';\n  return '';\n};\nconst lerEndereco = (href, base) => {\n  const h = String(href ?? '').trim();\n  return h ? new URL(h, base).href : '';\n};\nconst checarVazios = (alvo, itens, nomes) => {\n  if (!itens.length) return;\n  for (const [campo, nome] of Object.entries(nomes)) {\n    const vazios = itens.filter((l) => l[campo] === '').length;\n    if (vazios / itens.length > MAX_VAZIOS) {\n      problemas.push({\n        alvo, regra: 'vazios', campo,\n        detalhe: `${alvo}: ${vazios} de ${itens.length} sem ${nome} (${Math.round((100 * vazios) / itens.length)}%)`,\n      });\n    }\n  }\n};\nconst checarContagem = (alvo, total, coisa) => {\n  if (total < MINIMO[alvo]) {\n    problemas.push({ alvo, regra: 'contagem', detalhe: `${alvo}: ${total} ${coisa}; o mínimo é ${MINIMO[alvo]}` });\n  }\n};\n\n// 1. As duas páginas da loja, pelo código próprio.\nconst paginas = $('Páginas da loja').all().map((i) => i.json);\nconst porPagina = {};\n$('Tirar os livros').all().forEach((item, i) => {\n  const { pagina, url: base } = paginas[i];\n  const alvo = `loja-pagina-${pagina}`;\n  const l = {\n    titulo: lista(item.json.titulo),\n    preco: lista(item.json.preco),\n    disponibilidade: lista(item.json.disponibilidade),\n    endereco: lista(item.json.endereco),\n  };\n  const total = Math.max(...Object.values(l).map((x) => x.length));\n  const livros = [];\n  for (let k = 0; k < total; k++) {\n    livros.push({\n      rodada, alvo,\n      chave: lerEndereco(l.endereco[k], base),\n      nome: String(l.titulo[k] ?? '').trim(),\n      preco: lerPreco(l.preco[k]),\n      disponivel: lerEstoque(l.disponibilidade[k]),\n      firecrawl: '',\n    });\n  }\n  checarContagem(alvo, total, 'livros na página');\n  if (total > 0 && Object.values(l).some((x) => x.length !== total)) {\n    problemas.push({\n      alvo, regra: 'listas',\n      detalhe: `${alvo}: as listas vieram com tamanhos diferentes: ${l.titulo.length} títulos, ${l.preco.length} preços, ` +\n        `${l.disponibilidade.length} disponibilidades e ${l.endereco.length} endereços`,\n    });\n  }\n  checarVazios(alvo, livros, { chave: 'endereço', nome: 'título', preco: 'preço', disponivel: 'disponibilidade' });\n  porPagina[pagina] = livros;\n});\n\n// 2. A página 2 pelo Firecrawl, conferida livro a livro com o código próprio.\nconst fc = $input.first().json;\nconst conferencia = { comparados: 0, campos: 0, certos: 0, erros: [] };\nconst fcLivros = fc && fc.success === true && fc.data && fc.data.json && fc.data.json.livros;\nconst fcStatus = fc && fc.data && fc.data.metadata ? fc.data.metadata.statusCode : undefined;\nif (!Array.isArray(fcLivros) || fcStatus !== 200) {\n  problemas.push({\n    alvo: 'firecrawl', regra: 'firecrawl',\n    detalhe: `firecrawl: a resposta veio sem a lista de livros (success ${fc && fc.success}, status da loja ${fcStatus})`,\n  });\n} else {\n  const base = paginas.find((p) => p.pagina === 2).url;\n  const doFirecrawl = new Map(fcLivros.map((b) => [lerEndereco(b.url, base), b]));\n  for (const livro of porPagina[2] || []) {\n    const b = doFirecrawl.get(livro.chave);\n    if (!b) {\n      conferencia.erros.push({ chave: livro.chave, nome: livro.nome, campo: 'livro', firecrawl: 'faltou', gabarito: livro.nome });\n      livro.firecrawl = 'faltou';\n      continue;\n    }\n    doFirecrawl.delete(livro.chave);\n    conferencia.comparados++;\n    const notas = [];\n    const pares = [\n      ['nome', String(b.titulo ?? '').trim(), livro.nome],\n      ['preco', Number(b.preco), Number(livro.preco)],\n      ['disponivel', b.em_estoque === true ? 'sim' : b.em_estoque === false ? 'nao' : '', livro.disponivel],\n    ];\n    for (const [campo, deles, nosso] of pares) {\n      conferencia.campos++;\n      if (deles === nosso) {\n        conferencia.certos++;\n      } else {\n        conferencia.erros.push({ chave: livro.chave, nome: livro.nome, campo, firecrawl: String(deles), gabarito: String(nosso) });\n        notas.push(`${campo}=${deles}`);\n      }\n    }\n    livro.firecrawl = notas.length ? notas.join('; ') : 'ok';\n  }\n  for (const [chave, b] of doFirecrawl) {\n    conferencia.erros.push({ chave, nome: String(b.titulo ?? ''), campo: 'livro', firecrawl: 'a mais', gabarito: '' });\n  }\n}\n\n// 3. As citações, que vieram pelo scrape.do. A lista está num <script> da página.\nconst sd = $('Citações pelo scrape.do').first().json;\nconst corpo = String(sd.data ?? '');\nconst citacoes = [];\nif (/type=[\"']?password/i.test(corpo) || /captcha/i.test(corpo)) {\n  problemas.push({\n    alvo: 'citacoes', regra: 'recusa',\n    detalhe: 'citacoes: a página veio com login ou captcha. Pare: não tente passar por isso.',\n  });\n} else {\n  const m = corpo.match(/var data = (\\[[\\s\\S]*?\\]);\\s*for/);\n  let dados = [];\n  try {\n    dados = m ? JSON.parse(m[1]) : [];\n  } catch (erro) {\n    dados = [];\n  }\n  for (const q of dados) {\n    citacoes.push({\n      rodada, alvo: 'citacoes',\n      chave: String(q.text ?? '').replace(/^“|”$/g, '').trim(),\n      nome: String((q.author && q.author.name) ?? '').trim(),\n      preco: '', disponivel: '', firecrawl: '',\n    });\n  }\n  checarContagem('citacoes', citacoes.length, 'citações na página');\n  checarVazios('citacoes', citacoes, { chave: 'texto', nome: 'autor' });\n}\n\n// 4. O custo. O cabeçalho do scrape.do diz quanto aquele pedido custou.\nconst cabecalho = Number((sd.headers || {})['scrape.do-request-cost']);\nconst custo = {\n  scrapedo: Number.isFinite(cabecalho) ? cabecalho : TABELA_SCRAPEDO,\n  scrapedo_fonte: Number.isFinite(cabecalho) ? 'cabeçalho' : 'tabela',\n  firecrawl: TABELA_FIRECRAWL,\n  firecrawl_fonte: 'tabela',\n};\ncusto.total = custo.scrapedo + custo.firecrawl;\n\nlinhas.push(...(porPagina[1] || []), ...(porPagina[2] || []), ...citacoes);\nconst totais = { 'loja-pagina-1': (porPagina[1] || []).length, 'loja-pagina-2': (porPagina[2] || []).length, citacoes: citacoes.length };\nreturn [{ json: { rodada, totais, problemas, conferencia, custo, linhas } }];"
+      },
+      "id": "0e5e0012-0000-4000-8000-000000000013",
+      "name": "Montar a rodada",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1980,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c0000012-0000-4000-8000-000000000014",
+              "leftValue": "={{ $json.problemas.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "0e5e0012-0000-4000-8000-000000000014",
+      "name": "A raspagem quebrou?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2200,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Código do nó Code \"Montar o alerta de quebra\", no modo Run Once for All Items.\n// É o mesmo texto que está dentro de monitor-final.json.\n//\n// Só roda quando o If \"A raspagem quebrou?\" sai pelo verdadeiro.\n// Entra: o item do nó \"Montar a rodada\", com \"rodada\", \"problemas\" e \"custo\".\n// Sai: um item com o assunto, o texto do alerta, a lista de problemas e o custo.\nconst r = $input.first().json;\nreturn [\n  {\n    json: {\n      rodada: r.rodada,\n      assunto: `Monitor de preço: a raspagem quebrou na rodada de ${r.rodada}`,\n      texto: [\n        'Nada foi gravado. A rodada anterior continua valendo.',\n        ...r.problemas.map((p) => `- ${p.detalhe}`),\n        `Créditos gastos mesmo assim: ${r.custo.total} (scrape.do ${r.custo.scrapedo}, Firecrawl ${r.custo.firecrawl}).`,\n        'Abra a página que quebrou e veja o que mudou antes de mexer no fluxo.',\n      ].join('\\n'),\n      problemas: r.problemas,\n      custo: r.custo,\n    },\n  },\n];"
+      },
+      "id": "0e5e0012-0000-4000-8000-000000000015",
+      "name": "Montar o alerta de quebra",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2420,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "errorType": "errorMessage",
+        "errorMessage": "={{ $json.assunto }}"
+      },
+      "id": "0e5e0012-0000-4000-8000-000000000016",
+      "name": "Parar com erro",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        2640,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Código do nó Code \"Uma linha por item\", no modo Run Once for All Items.\n// É o mesmo texto que está dentro de monitor-final.json.\n//\n// Só roda quando a rodada passou nas regras de saúde.\n// Entra: o item do nó \"Montar a rodada\". Sai: um item por linha da rodada,\n// nos três alvos, com as colunas do histórico.\nreturn $input.first().json.linhas.map((linha) => ({ json: linha }));"
+      },
+      "id": "0e5e0012-0000-4000-8000-000000000017",
+      "name": "Uma linha por item",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2420,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "csv",
+        "options": {}
+      },
+      "id": "0e5e0012-0000-4000-8000-000000000018",
+      "name": "Rodada de hoje em CSV",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        2640,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "fileSelector": "/home/node/.n8n-files/monitor-final/ultima-rodada.csv",
+        "options": {}
+      },
+      "id": "0e5e0012-0000-4000-8000-000000000019",
+      "name": "Ler a rodada anterior",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        2860,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "csv",
+        "options": {}
+      },
+      "id": "0e5e0012-0000-4000-8000-000000000020",
+      "name": "CSV para itens",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        3080,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Código do nó Code \"Comparar com a anterior\", no modo Run Once for All Items.\n// É o mesmo texto que está dentro de monitor-final.json.\n//\n// Entra: as linhas da rodada anterior, lidas do arquivo pelo nó \"CSV para itens\".\n// Do arquivo, tudo chega como texto. Lê também a rodada de hoje, no nó\n// \"Uma linha por item\", e a conferência e o custo, no nó \"Montar a rodada\".\n// Sai: um item só, com o resumo e a lista do que mudou. O arquivo CSV da rodada\n// de hoje vai junto, para os dois nós que gravam.\nconst hoje = $('Uma linha por item').all().map((item) => item.json);\nconst antes = $input.all().map((item) => item.json);\nconst r = $('Montar a rodada').first().json;\nconst chave = (l) => `${l.alvo}|${l.chave}`;\nconst hojePorChave = new Map(hoje.map((l) => [chave(l), l]));\n\nconst mudancas = [];\nfor (const velho of antes) {\n  const novo = hojePorChave.get(chave(velho));\n  if (!novo) {\n    // Estava na anterior e não veio hoje.\n    mudancas.push({ alvo: velho.alvo, chave: velho.chave, nome: velho.nome, tipo: 'sumiu', antes: velho.preco, depois: '' });\n    continue;\n  }\n  // Compara como número: \"50.1\" e \"50.10\" são o mesmo preço. Citação não tem preço.\n  if (velho.preco !== '' && novo.preco !== '' && Number(velho.preco) !== Number(novo.preco)) {\n    mudancas.push({ alvo: novo.alvo, chave: novo.chave, nome: novo.nome, tipo: 'preco', antes: velho.preco, depois: novo.preco });\n  }\n  if (velho.disponivel !== '' && novo.disponivel !== '' && velho.disponivel !== novo.disponivel) {\n    mudancas.push({\n      alvo: novo.alvo, chave: novo.chave, nome: novo.nome, tipo: 'disponibilidade', antes: velho.disponivel, depois: novo.disponivel,\n    });\n  }\n}\n\nreturn [\n  {\n    json: {\n      rodada: r.rodada,\n      rodada_anterior: antes.length ? antes[0].rodada : '',\n      itens_hoje: hoje.length,\n      itens_antes: antes.length,\n      mudancas,\n      erros_firecrawl: r.conferencia.erros,\n      custo: r.custo,\n    },\n    binary: $('Rodada de hoje em CSV').first().binary,\n  },\n];"
+      },
+      "id": "0e5e0012-0000-4000-8000-000000000021",
+      "name": "Comparar com a anterior",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3300,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/home/node/.n8n-files/monitor-final/rodadas/rodada-{{ $json.rodada }}.csv",
+        "options": {}
+      },
+      "id": "0e5e0012-0000-4000-8000-000000000022",
+      "name": "Guardar a rodada do dia",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        3520,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "/home/node/.n8n-files/monitor-final/ultima-rodada.csv",
+        "options": {}
+      },
+      "id": "0e5e0012-0000-4000-8000-000000000023",
+      "name": "Trocar a rodada anterior",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        3740,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c0000012-0000-4000-8000-000000000024",
+              "leftValue": "={{ $json.mudancas.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "0e5e0012-0000-4000-8000-000000000024",
+      "name": "Mudou algo?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3960,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Código do nó Code \"Montar o aviso\", no modo Run Once for All Items.\n// É o mesmo texto que está dentro de monitor-final.json.\n//\n// Só roda quando o If \"Mudou algo?\" sai pelo verdadeiro.\n// Entra: o resumo do nó \"Comparar com a anterior\" (os nós de gravar passam o resumo adiante).\n// Sai: um item com o assunto, o texto do aviso, a lista do que mudou e o custo.\nconst r = $input.first().json;\nconst NOMES = { 'loja-pagina-1': 'loja, página 1', 'loja-pagina-2': 'loja, página 2', citacoes: 'citações' };\nconst linhas = r.mudancas.map((m) => {\n  const onde = NOMES[m.alvo] || m.alvo;\n  if (m.tipo === 'preco') {\n    const rumo = Number(m.depois) < Number(m.antes) ? 'caiu' : 'subiu';\n    return `${onde}: ${m.nome}: o preço ${rumo} de £${m.antes} para £${m.depois}`;\n  }\n  if (m.tipo === 'disponibilidade') {\n    return `${onde}: ${m.nome}: ${m.depois === 'sim' ? 'voltou ao estoque' : 'ficou sem estoque'}`;\n  }\n  return `${onde}: ${m.nome}: saiu da página`;\n});\nconst erros = r.erros_firecrawl.map((e) => `${e.nome}: ${e.campo} veio ${e.firecrawl}, o código próprio leu ${e.gabarito}`);\nreturn [\n  {\n    json: {\n      assunto: `Monitor de preço: ${r.mudancas.length} mudança(s) na rodada de ${r.rodada}`,\n      texto: [\n        `Comparei ${r.itens_hoje} itens dos três alvos com a rodada de ${r.rodada_anterior}.`,\n        ...linhas.map((l) => `- ${l}`),\n        ...(erros.length ? ['O Firecrawl errou na página 2 (o histórico ficou com o valor do código próprio):', ...erros.map((e) => `- ${e}`)] : []),\n        `Créditos dessa rodada: ${r.custo.total} (scrape.do ${r.custo.scrapedo}, pelo ${r.custo.scrapedo_fonte}; Firecrawl ${r.custo.firecrawl}, pela ${r.custo.firecrawl_fonte}).`,\n      ].join('\\n'),\n      mudancas: r.mudancas,\n      erros_firecrawl: r.erros_firecrawl,\n      custo: r.custo,\n    },\n  },\n];"
+      },
+      "id": "0e5e0012-0000-4000-8000-000000000025",
+      "name": "Montar o aviso",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4180,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Todo dia às 7h": {
+      "main": [
+        [
+          {
+            "node": "Páginas da loja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rodar agora": {
+      "main": [
+        [
+          {
+            "node": "Páginas da loja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Páginas da loja": {
+      "main": [
+        [
+          {
+            "node": "Baixar as páginas da loja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baixar as páginas da loja": {
+      "main": [
+        [
+          {
+            "node": "Ver as respostas da loja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ver as respostas da loja": {
+      "main": [
+        [
+          {
+            "node": "O site recusou?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "O site recusou?": {
+      "main": [
+        [
+          {
+            "node": "Parar: o site recusou",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tentar de novo?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tentar de novo?": {
+      "main": [
+        [
+          {
+            "node": "Esperar mais a cada tentativa",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tirar os livros",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Esperar mais a cada tentativa": {
+      "main": [
+        [
+          {
+            "node": "Páginas da loja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tirar os livros": {
+      "main": [
+        [
+          {
+            "node": "Citações pelo scrape.do",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Citações pelo scrape.do": {
+      "main": [
+        [
+          {
+            "node": "Página 2 pelo Firecrawl",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Página 2 pelo Firecrawl": {
+      "main": [
+        [
+          {
+            "node": "Montar a rodada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar a rodada": {
+      "main": [
+        [
+          {
+            "node": "A raspagem quebrou?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "A raspagem quebrou?": {
+      "main": [
+        [
+          {
+            "node": "Montar o alerta de quebra",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Uma linha por item",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar o alerta de quebra": {
+      "main": [
+        [
+          {
+            "node": "Parar com erro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Uma linha por item": {
+      "main": [
+        [
+          {
+            "node": "Rodada de hoje em CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rodada de hoje em CSV": {
+      "main": [
+        [
+          {
+            "node": "Ler a rodada anterior",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ler a rodada anterior": {
+      "main": [
+        [
+          {
+            "node": "CSV para itens",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CSV para itens": {
+      "main": [
+        [
+          {
+            "node": "Comparar com a anterior",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Comparar com a anterior": {
+      "main": [
+        [
+          {
+            "node": "Guardar a rodada do dia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar a rodada do dia": {
+      "main": [
+        [
+          {
+            "node": "Trocar a rodada anterior",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trocar a rodada anterior": {
+      "main": [
+        [
+          {
+            "node": "Mudou algo?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mudou algo?": {
+      "main": [
+        [
+          {
+            "node": "Montar o aviso",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Sao_Paulo"
+  },
+  "pinData": {}
+}

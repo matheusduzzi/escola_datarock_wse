@@ -1,0 +1,13 @@
+url,status,bytes,livros_na_pagina,endereco_final
+https://books.toscrape.com/catalogue/page-1.html,200,51294,20,
+https://books.toscrape.com/catalogue/page-2.html,200,50890,20,
+https://books.toscrape.com/catalogue/page-3.html,200,50731,20,
+https://books.toscrape.com/catalogue/page-4.html,429,162,0,
+https://books.toscrape.com/catalogue/page-4.html,200,51003,20,
+https://books.toscrape.com/catalogue/page-5.html,200,2310,0,
+https://books.toscrape.com/catalogue/page-6.html,200,50544,20,
+https://books.toscrape.com/catalogue/page-7.html,403,548,0,
+https://books.toscrape.com/catalogue/page-8.html,302,0,0,https://books.toscrape.com/login
+https://books.toscrape.com/catalogue/page-9.html,429,162,0,
+https://books.toscrape.com/catalogue/page-9.html,429,162,0,
+https://books.toscrape.com/catalogue/page-10.html,200,50912,20,

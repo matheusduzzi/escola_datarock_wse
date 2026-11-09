@@ -1,0 +1,43 @@
+[
+  {
+    "assunto": "Monitor de preço: 4 mudança(s) na rodada de 2026-11-08",
+    "texto": "(montado à mão para testar o comparador; não é saída do n8n)\nComparei 20 livros com a rodada de 2026-11-06.\n- Soumission: o preço subiu de £45.10 para £50.10\n- Sharp Objects: voltou ao estoque\n- Set Me Free: o preço subiu de £15.99 para £17.46\n- Olio: o preço caiu de £26.40 para £23.88",
+    "mudancas": [
+      {
+        "url": "https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html",
+        "titulo": "A Light in the Attic",
+        "tipo": "preco",
+        "antes": "51.77",
+        "depois": "51.77"
+      },
+      {
+        "url": "https://books.toscrape.com/catalogue/soumission_998/index.html",
+        "titulo": "Soumission",
+        "tipo": "preco",
+        "antes": "45.10",
+        "depois": "50.10"
+      },
+      {
+        "url": "https://books.toscrape.com/catalogue/sharp-objects_997/index.html",
+        "titulo": "Sharp Objects",
+        "tipo": "disponibilidade",
+        "antes": "nao",
+        "depois": "sim"
+      },
+      {
+        "url": "https://books.toscrape.com/catalogue/set-me-free_988/index.html",
+        "titulo": "Set Me Free",
+        "tipo": "preco",
+        "antes": "15.99",
+        "depois": "17.46"
+      },
+      {
+        "url": "https://books.toscrape.com/catalogue/soumission_998/index.html",
+        "titulo": "Soumission",
+        "tipo": "preco",
+        "antes": "45.10",
+        "depois": "50.10"
+      }
+    ]
+  }
+]

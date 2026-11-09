@@ -1,0 +1,15 @@
+{
+  "nome": "travel-3-profundidade-1",
+  "categoria": "travel_2",
+  "nota": "O mesmo filtro, parando os links na profundidade 1: a lista e os livros que ela mostra.",
+  "crawl": {
+    "url": "https://books.toscrape.com/catalogue/category/books/travel_2/index.html",
+    "limit": 20,
+    "crawl_entire_domain": true,
+    "include_paths": [
+      "catalogue/category/books/travel_2/",
+      "catalogue/[^/]+_\\d+/index\\.html$"
+    ],
+    "max_discovery_depth": 1
+  }
+}

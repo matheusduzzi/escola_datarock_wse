@@ -1,0 +1,12 @@
+[
+  {
+    "assunto": "Monitor de preço: a raspagem quebrou na rodada de 2026-11-08",
+    "texto": "Nada foi gravado. A rodada anterior continua valendo.\n- 12 livros na página; o mínimo é 16",
+    "problemas": [
+      {
+        "regra": "contagem",
+        "detalhe": "12 livros na página; o mínimo é 16"
+      }
+    ]
+  }
+]

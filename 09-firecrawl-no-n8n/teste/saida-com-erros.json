@@ -1,0 +1,142 @@
+[
+  {
+    "pagina": "https://books.toscrape.com/catalogue/page-1.html",
+    "titulo": "A Light in the Attic",
+    "preco": 51.77,
+    "em_estoque": true,
+    "url": "a-light-in-the-attic_1000/index.html"
+  },
+  {
+    "pagina": "https://books.toscrape.com/catalogue/page-1.html",
+    "titulo": "Tipping the...",
+    "preco": 53.74,
+    "em_estoque": true,
+    "url": "tipping-the-velvet_999/index.html"
+  },
+  {
+    "pagina": "https://books.toscrape.com/catalogue/page-1.html",
+    "titulo": "Soumission",
+    "preco": "£50.10",
+    "em_estoque": true,
+    "url": "soumission_998/index.html"
+  },
+  {
+    "pagina": "https://books.toscrape.com/catalogue/page-1.html",
+    "titulo": "Sharp Objects",
+    "preco": 47.82,
+    "em_estoque": false,
+    "url": "sharp-objects_997/index.html"
+  },
+  {
+    "pagina": "https://books.toscrape.com/catalogue/page-1.html",
+    "titulo": "Sapiens: A Brief History of Humankind",
+    "preco": 54.23,
+    "em_estoque": true,
+    "url": "sapiens-a-brief-history-of-humankind_996/index.html"
+  },
+  {
+    "pagina": "https://books.toscrape.com/catalogue/page-1.html",
+    "titulo": "The Requiem Red",
+    "preco": 22.65,
+    "em_estoque": true,
+    "url": "the-requiem-red_995/index.html"
+  },
+  {
+    "pagina": "https://books.toscrape.com/catalogue/page-1.html",
+    "titulo": "The Dirty Little Secrets of Getting Your Dream Job",
+    "preco": 33.34,
+    "em_estoque": true,
+    "url": "the-dirty-little-secrets-of-getting-your-dream-job_994/index.html"
+  },
+  {
+    "pagina": "https://books.toscrape.com/catalogue/page-1.html",
+    "titulo": "The Coming Woman: A Novel Based on the Life of the Infamous Feminist, Victoria Woodhull",
+    "preco": 17.93,
+    "em_estoque": true,
+    "url": "the-coming-woman-a-novel-based-on-the-life-of-the-infamous-feminist-victoria-woodhull_993/index.html"
+  },
+  {
+    "pagina": "https://books.toscrape.com/catalogue/page-1.html",
+    "titulo": "The Boys in the Boat: Nine Americans and Their Epic Quest for Gold at the 1936 Berlin Olympics",
+    "preco": 22.6,
+    "em_estoque": true,
+    "url": "the-boys-in-the-boat-nine-americans-and-their-epic-quest-for-gold-at-the-1936-berlin-olympics_992/index.html"
+  },
+  {
+    "pagina": "https://books.toscrape.com/catalogue/page-1.html",
+    "titulo": "The Black Maria",
+    "preco": 52.15,
+    "em_estoque": true,
+    "url": "the-black-maria_991/index.html"
+  },
+  {
+    "pagina": "https://books.toscrape.com/catalogue/page-1.html",
+    "titulo": "Starving Hearts (Triangular Trade Trilogy, #1)",
+    "preco": 13.99,
+    "em_estoque": true,
+    "url": "starving-hearts-triangular-trade-trilogy-1_990/index.html"
+  },
+  {
+    "pagina": "https://books.toscrape.com/catalogue/page-1.html",
+    "titulo": "Shakespeare's Sonnets",
+    "preco": 20.66,
+    "em_estoque": true,
+    "url": "shakespeares-sonnets_989/index.html"
+  },
+  {
+    "pagina": "https://books.toscrape.com/catalogue/page-1.html",
+    "titulo": "Set Me Free",
+    "preco": 17.46,
+    "em_estoque": true,
+    "url": "set-me-free_988/index.html"
+  },
+  {
+    "pagina": "https://books.toscrape.com/catalogue/page-1.html",
+    "titulo": "Scott Pilgrim's Precious Little Life (Scott Pilgrim #1)",
+    "preco": 52.29,
+    "em_estoque": true,
+    "url": "scott-pilgrims-precious-little-life-scott-pilgrim-1_987/index.html"
+  },
+  {
+    "pagina": "https://books.toscrape.com/catalogue/page-1.html",
+    "titulo": "Rip it Up and Start Again",
+    "preco": 35.02,
+    "em_estoque": true,
+    "url": "rip-it-up-and-start-again_986/index.html"
+  },
+  {
+    "pagina": "https://books.toscrape.com/catalogue/page-1.html",
+    "titulo": "Our Band Could Be Your Life: Scenes from the American Indie Underground, 1981-1991",
+    "preco": 57.25,
+    "em_estoque": true,
+    "url": "our-band-could-be-your-life-scenes-from-the-american-indie-underground-1981-1991_985/index.html"
+  },
+  {
+    "pagina": "https://books.toscrape.com/catalogue/page-1.html",
+    "titulo": "Olio",
+    "preco": 23.88,
+    "em_estoque": true,
+    "url": "olio_984/index.html"
+  },
+  {
+    "pagina": "https://books.toscrape.com/catalogue/page-1.html",
+    "titulo": "Mesaerion: The Best Science Fiction Stories 1800-1849",
+    "preco": 37.59,
+    "em_estoque": true,
+    "url": "mesaerion-the-best-science-fiction-stories-1800-1849_983/index.html"
+  },
+  {
+    "pagina": "https://books.toscrape.com/catalogue/page-1.html",
+    "titulo": "Libertarianism for Beginners",
+    "preco": 51.33,
+    "em_estoque": true,
+    "url": "libertarianism-for-beginners_982/index.html"
+  },
+  {
+    "pagina": "https://books.toscrape.com/catalogue/page-1.html",
+    "titulo": "A Light in the Attic",
+    "preco": 51.77,
+    "em_estoque": true,
+    "url": "a-light-in-the-attic_1000/index.html"
+  }
+]

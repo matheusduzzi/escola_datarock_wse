@@ -1,0 +1,505 @@
+{
+  "name": "Monitor de preço com trava: saber quando a raspagem quebrou",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "id": "0e5e0011-0000-4000-8000-000000000001",
+      "name": "Todo dia às 7h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "0e5e0011-0000-4000-8000-000000000002",
+      "name": "Rodar agora",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://books.toscrape.com/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "curso-web-scraping-em-escala (estudo)"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "0e5e0011-0000-4000-8000-000000000003",
+      "name": "Baixar a página 1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "dataPropertyName": "data",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "titulo",
+              "cssSelector": "article.product_pod h3 a",
+              "returnValue": "attribute",
+              "attribute": "title",
+              "returnArray": true
+            },
+            {
+              "key": "preco",
+              "cssSelector": "article.product_pod p.price_color",
+              "returnArray": true
+            },
+            {
+              "key": "disponibilidade",
+              "cssSelector": "article.product_pod p.instock.availability",
+              "returnArray": true
+            },
+            {
+              "key": "endereco",
+              "cssSelector": "article.product_pod h3 a",
+              "returnValue": "attribute",
+              "attribute": "href",
+              "returnArray": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0e5e0011-0000-4000-8000-000000000004",
+      "name": "Tirar os livros",
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        440,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Código do nó Code \"Checar a saúde da rodada\", no modo Run Once for All Items.\n// É o mesmo texto que está dentro de monitor-com-trava.json.\n//\n// Entra: um item do nó \"Tirar os livros\", com quatro listas (titulo, preco,\n// disponibilidade, endereco). O nó HTML sempre retorna esse item, mesmo quando\n// os seletores não acham nada: aí as listas vêm vazias.\n// Sai: um item só, com a rodada em \"linhas\" e a lista \"problemas\".\n// Lista vazia: a rodada está boa. Qualquer problema: o fluxo não grava e avisa.\n\n// As duas regras de saúde. Os números são decisão de quem usa o monitor.\nconst CONTAGEM_MINIMA = 16; // a página 1 da loja traz 20 livros\nconst MAX_VAZIOS = 0.1; // até 10% de um campo vazio ainda passa\n\nconst LOJA = 'https://books.toscrape.com/';\nconst rodada = $now.toFormat('yyyy-MM-dd');\nconst lista = (v) => (Array.isArray(v) ? v : v == null || v === '' ? [] : [v]);\nconst { titulo, preco, disponibilidade, endereco } = $input.first().json;\nconst listas = {\n  titulo: lista(titulo),\n  preco: lista(preco),\n  disponibilidade: lista(disponibilidade),\n  endereco: lista(endereco),\n};\nconst total = Math.max(...Object.values(listas).map((l) => l.length));\n\n// Só aceita o formato que a loja usa. O que não reconhece fica vazio,\n// para a regra de vazios ver. \"£51.77\" vira \"51.77\"; \"51,77 €\" fica vazio.\nconst lerPreco = (texto) => {\n  const m = String(texto ?? '').match(/£\\s*(\\d+\\.\\d{2})/);\n  return m ? m[1] : '';\n};\n// \"In stock\" vira sim, \"Out of stock\" vira nao. Texto novo fica vazio,\n// em vez de virar \"nao\" e aparecer como livro sem estoque.\nconst lerEstoque = (texto) => {\n  const t = String(texto ?? '');\n  if (/out of stock/i.test(t)) return 'nao';\n  if (/\\bin stock\\b/i.test(t)) return 'sim';\n  return '';\n};\nconst lerEndereco = (href) => {\n  const h = String(href ?? '').trim();\n  if (!h) return '';\n  return h.startsWith('http') ? h : LOJA + h.replace(/^\\.?\\//, '');\n};\n\nconst linhas = [];\nfor (let i = 0; i < total; i++) {\n  linhas.push({\n    rodada,\n    url: lerEndereco(listas.endereco[i]),\n    titulo: String(listas.titulo[i] ?? '').trim(),\n    preco: lerPreco(listas.preco[i]),\n    disponivel: lerEstoque(listas.disponibilidade[i]),\n  });\n}\n\nconst problemas = [];\n// Regra 1: contagem mínima.\nif (total < CONTAGEM_MINIMA) {\n  problemas.push({ regra: 'contagem', detalhe: `${total} livros na página; o mínimo é ${CONTAGEM_MINIMA}` });\n}\n// Listas de tamanhos diferentes: um campo sumiu de algum livro, e os\n// valores dos livros seguintes ficariam no livro errado.\nconst tamanhos = Object.values(listas).map((l) => l.length);\nif (total > 0 && tamanhos.some((n) => n !== total)) {\n  problemas.push({\n    regra: 'listas',\n    detalhe:\n      `as listas vieram com tamanhos diferentes: ${listas.titulo.length} títulos, ${listas.preco.length} preços, ` +\n      `${listas.disponibilidade.length} disponibilidades e ${listas.endereco.length} endereços`,\n  });\n}\n// Regra 2: percentual de campos vazios.\nif (total > 0) {\n  const nomes = { url: 'endereço', titulo: 'título', preco: 'preço', disponivel: 'disponibilidade' };\n  for (const campo of Object.keys(nomes)) {\n    const vazios = linhas.filter((l) => l[campo] === '').length;\n    if (vazios / total > MAX_VAZIOS) {\n      problemas.push({\n        regra: 'vazios',\n        campo,\n        detalhe: `${vazios} de ${total} livros sem ${nomes[campo]} (${Math.round((100 * vazios) / total)}%)`,\n      });\n    }\n  }\n}\n\nreturn [{ json: { rodada, total, problemas, linhas } }];"
+      },
+      "id": "0e5e0011-0000-4000-8000-000000000005",
+      "name": "Checar a saúde da rodada",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c0000011-0000-4000-8000-000000000001",
+              "leftValue": "={{ $json.problemas.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "0e5e0011-0000-4000-8000-000000000006",
+      "name": "A raspagem quebrou?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        880,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Código do nó Code \"Uma linha por livro\", no modo Run Once for All Items.\n// É o mesmo texto que está dentro de monitor-com-trava.json.\n//\n// Só roda quando a rodada passou na trava: o If \"A raspagem quebrou?\" saiu pelo falso.\n// Entra: o item do nó \"Checar a saúde da rodada\", com a rodada pronta em \"linhas\".\n// Sai: um item por livro, com as cinco colunas da rodada, como na aula 10.\nreturn $input.first().json.linhas.map((linha) => ({ json: linha }));"
+      },
+      "id": "0e5e0011-0000-4000-8000-000000000007",
+      "name": "Uma linha por livro",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "csv",
+        "options": {}
+      },
+      "id": "0e5e0011-0000-4000-8000-000000000008",
+      "name": "Rodada de hoje em CSV",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1320,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "fileSelector": "/home/node/.n8n-files/monitor/ultima-rodada.csv",
+        "options": {}
+      },
+      "id": "0e5e0011-0000-4000-8000-000000000009",
+      "name": "Ler a rodada anterior",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        1540,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "csv",
+        "options": {}
+      },
+      "id": "0e5e0011-0000-4000-8000-000000000010",
+      "name": "CSV para itens",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        1760,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Código do nó Code \"Comparar com a anterior\", no modo Run Once for All Items.\n// É o mesmo código da aula 10, e o mesmo texto que está dentro de monitor-com-trava.json.\n//\n// Entra: as linhas da rodada anterior, lidas do arquivo pelo nó \"CSV para itens\".\n// Do arquivo, tudo chega como texto: \"50.10\", \"sim\".\n// Lê também a rodada de hoje, direto no nó \"Uma linha por livro\".\n// Sai: um item só, com o resumo e a lista do que mudou. O arquivo CSV da rodada\n// de hoje vai junto, para os dois nós que gravam.\nconst hoje = $('Uma linha por livro').all().map((item) => item.json);\nconst antes = $input.all().map((item) => item.json);\nconst antesPorUrl = new Map(antes.map((linha) => [linha.url, linha]));\n\nconst mudancas = [];\nfor (const livro of hoje) {\n  const velho = antesPorUrl.get(livro.url);\n  // Livro que não estava na rodada anterior: essa versão do monitor não avisa.\n  if (!velho) continue;\n  // Compara como número: \"50.1\" e \"50.10\" são o mesmo preço.\n  if (Number(velho.preco) !== Number(livro.preco)) {\n    mudancas.push({ url: livro.url, titulo: livro.titulo, tipo: 'preco', antes: velho.preco, depois: livro.preco });\n  }\n  if (velho.disponivel !== livro.disponivel) {\n    mudancas.push({\n      url: livro.url, titulo: livro.titulo, tipo: 'disponibilidade', antes: velho.disponivel, depois: livro.disponivel,\n    });\n  }\n}\n\nreturn [\n  {\n    json: {\n      rodada: hoje.length ? hoje[0].rodada : '',\n      rodada_anterior: antes.length ? antes[0].rodada : '',\n      livros_hoje: hoje.length,\n      livros_antes: antes.length,\n      mudancas,\n    },\n    binary: $('Rodada de hoje em CSV').first().binary,\n  },\n];"
+      },
+      "id": "0e5e0011-0000-4000-8000-000000000011",
+      "name": "Comparar com a anterior",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1980,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/home/node/.n8n-files/monitor/rodadas/rodada-{{ $json.rodada }}.csv",
+        "options": {}
+      },
+      "id": "0e5e0011-0000-4000-8000-000000000012",
+      "name": "Guardar a rodada do dia",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        2200,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "/home/node/.n8n-files/monitor/ultima-rodada.csv",
+        "options": {}
+      },
+      "id": "0e5e0011-0000-4000-8000-000000000013",
+      "name": "Trocar a rodada anterior",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        2420,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c0000010-0000-4000-8000-000000000001",
+              "leftValue": "={{ $json.mudancas.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "0e5e0011-0000-4000-8000-000000000014",
+      "name": "Mudou algo?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2640,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Código do nó Code \"Montar o aviso\", no modo Run Once for All Items.\n// É o mesmo código da aula 10, e o mesmo texto que está dentro de monitor-com-trava.json.\n//\n// Só roda quando o If \"Mudou algo?\" sai pelo verdadeiro.\n// Entra: o resumo do nó \"Comparar com a anterior\" (os nós de gravar passam o resumo adiante).\n// Sai: um item com o assunto, o texto do aviso e a lista do que mudou.\nconst r = $input.first().json;\nconst linhas = r.mudancas.map((m) => {\n  if (m.tipo === 'preco') {\n    const rumo = Number(m.depois) < Number(m.antes) ? 'caiu' : 'subiu';\n    return `${m.titulo}: o preço ${rumo} de £${m.antes} para £${m.depois}`;\n  }\n  return `${m.titulo}: ${m.depois === 'sim' ? 'voltou ao estoque' : 'ficou sem estoque'}`;\n});\nreturn [\n  {\n    json: {\n      assunto: `Monitor de preço: ${r.mudancas.length} mudança(s) na rodada de ${r.rodada}`,\n      texto: [`Comparei ${r.livros_hoje} livros com a rodada de ${r.rodada_anterior}.`, ...linhas.map((l) => `- ${l}`)].join('\\n'),\n      mudancas: r.mudancas,\n    },\n  },\n];"
+      },
+      "id": "0e5e0011-0000-4000-8000-000000000015",
+      "name": "Montar o aviso",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2860,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Código do nó Code \"Montar o alerta de quebra\", no modo Run Once for All Items.\n// É o mesmo texto que está dentro de monitor-com-trava.json.\n//\n// Só roda quando o If \"A raspagem quebrou?\" sai pelo verdadeiro.\n// Entra: o item com \"rodada\" e \"problemas\".\n// Sai: um item com o assunto, o texto do alerta e a lista de problemas.\nconst r = $input.first().json;\nreturn [\n  {\n    json: {\n      assunto: `Monitor de preço: a raspagem quebrou na rodada de ${r.rodada}`,\n      texto: [\n        'Nada foi gravado. A rodada anterior continua valendo.',\n        ...r.problemas.map((p) => `- ${p.detalhe}`),\n        'Abra a página da loja e veja se o layout mudou antes de mexer no fluxo.',\n      ].join('\\n'),\n      problemas: r.problemas,\n    },\n  },\n];"
+      },
+      "id": "0e5e0011-0000-4000-8000-000000000016",
+      "name": "Montar o alerta de quebra",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "errorType": "errorMessage",
+        "errorMessage": "={{ $json.assunto }}"
+      },
+      "id": "0e5e0011-0000-4000-8000-000000000017",
+      "name": "Parar com erro",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        1320,
+        320
+      ]
+    }
+  ],
+  "connections": {
+    "Todo dia às 7h": {
+      "main": [
+        [
+          {
+            "node": "Baixar a página 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rodar agora": {
+      "main": [
+        [
+          {
+            "node": "Baixar a página 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baixar a página 1": {
+      "main": [
+        [
+          {
+            "node": "Tirar os livros",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tirar os livros": {
+      "main": [
+        [
+          {
+            "node": "Checar a saúde da rodada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Checar a saúde da rodada": {
+      "main": [
+        [
+          {
+            "node": "A raspagem quebrou?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "A raspagem quebrou?": {
+      "main": [
+        [
+          {
+            "node": "Montar o alerta de quebra",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Uma linha por livro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Uma linha por livro": {
+      "main": [
+        [
+          {
+            "node": "Rodada de hoje em CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rodada de hoje em CSV": {
+      "main": [
+        [
+          {
+            "node": "Ler a rodada anterior",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ler a rodada anterior": {
+      "main": [
+        [
+          {
+            "node": "CSV para itens",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CSV para itens": {
+      "main": [
+        [
+          {
+            "node": "Comparar com a anterior",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Comparar com a anterior": {
+      "main": [
+        [
+          {
+            "node": "Guardar a rodada do dia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar a rodada do dia": {
+      "main": [
+        [
+          {
+            "node": "Trocar a rodada anterior",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trocar a rodada anterior": {
+      "main": [
+        [
+          {
+            "node": "Mudou algo?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mudou algo?": {
+      "main": [
+        [
+          {
+            "node": "Montar o aviso",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Montar o alerta de quebra": {
+      "main": [
+        [
+          {
+            "node": "Parar com erro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Sao_Paulo"
+  },
+  "pinData": {}
+}

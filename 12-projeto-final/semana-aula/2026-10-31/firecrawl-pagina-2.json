@@ -1,0 +1,130 @@
+{
+  "success": true,
+  "data": {
+    "json": {
+      "livros": [
+        {
+          "titulo": "In Her Wake",
+          "preco": 12.84,
+          "em_estoque": true,
+          "url": "https://books.toscrape.com/catalogue/in-her-wake_980/index.html"
+        },
+        {
+          "titulo": "How Music Works",
+          "preco": 37.32,
+          "em_estoque": true,
+          "url": "https://books.toscrape.com/catalogue/how-music-works_979/index.html"
+        },
+        {
+          "titulo": "Foolproof Preserving: A Guide to Small Batch Jams, Jellies, Pickles, Condiments, and More: A Foolproof Guide to Making Small Batch Jams, Jellies, Pickles, Condiments, and More",
+          "preco": 30.52,
+          "em_estoque": true,
+          "url": "https://books.toscrape.com/catalogue/foolproof-preserving-a-guide-to-small-batch-jams-jellies-pickles-condiments-and-more-a-foolproof-guide-to-making-small-batch-jams-jellies-pickles-condiments-and-more_978/index.html"
+        },
+        {
+          "titulo": "Chase Me (Paris Nights #2)",
+          "preco": 25.27,
+          "em_estoque": false,
+          "url": "https://books.toscrape.com/catalogue/chase-me-paris-nights-2_977/index.html"
+        },
+        {
+          "titulo": "Black Dust",
+          "preco": 34.53,
+          "em_estoque": true,
+          "url": "https://books.toscrape.com/catalogue/black-dust_976/index.html"
+        },
+        {
+          "titulo": "Birdsong: A Story in Pictures",
+          "preco": 54.64,
+          "em_estoque": true,
+          "url": "https://books.toscrape.com/catalogue/birdsong-a-story-in-pictures_975/index.html"
+        },
+        {
+          "titulo": "America's Cradle of Quarterbacks: Western Pennsylvania's Football Factory from Johnny Unitas to Joe Montana",
+          "preco": 22.5,
+          "em_estoque": true,
+          "url": "https://books.toscrape.com/catalogue/americas-cradle-of-quarterbacks-western-pennsylvanias-football-factory-from-johnny-unitas-to-joe-montana_974/index.html"
+        },
+        {
+          "titulo": "Aladdin and His Wonderful Lamp",
+          "preco": 53.13,
+          "em_estoque": true,
+          "url": "https://books.toscrape.com/catalogue/aladdin-and-his-wonderful-lamp_973/index.html"
+        },
+        {
+          "titulo": "Worlds Elsewhere: Journeys Around Shakespeare’s Globe",
+          "preco": 40.3,
+          "em_estoque": true,
+          "url": "https://books.toscrape.com/catalogue/worlds-elsewhere-journeys-around-shakespeares-globe_972/index.html"
+        },
+        {
+          "titulo": "Wall and Piece",
+          "preco": 44.18,
+          "em_estoque": true,
+          "url": "https://books.toscrape.com/catalogue/wall-and-piece_971/index.html"
+        },
+        {
+          "titulo": "The Five Love Languages: How to Express Heartfelt Commitment to Your Mate",
+          "preco": 31.05,
+          "em_estoque": true,
+          "url": "https://books.toscrape.com/catalogue/the-five-love-languages-how-to-express-heartfelt-commitment-to-your-mate_969/index.html"
+        },
+        {
+          "titulo": "The Elephant Tree",
+          "preco": 23.82,
+          "em_estoque": true,
+          "url": "https://books.toscrape.com/catalogue/the-elephant-tree_968/index.html"
+        },
+        {
+          "titulo": "The Bear and the Piano",
+          "preco": 36.89,
+          "em_estoque": true,
+          "url": "https://books.toscrape.com/catalogue/the-bear-and-the-piano_967/index.html"
+        },
+        {
+          "titulo": "Sophie's World",
+          "preco": 15.94,
+          "em_estoque": true,
+          "url": "https://books.toscrape.com/catalogue/sophies-world_966/index.html"
+        },
+        {
+          "titulo": "Penny Maybe",
+          "preco": 33.29,
+          "em_estoque": true,
+          "url": "https://books.toscrape.com/catalogue/penny-maybe_965/index.html"
+        },
+        {
+          "titulo": "Maude (1883-1993):She Grew Up with the country",
+          "preco": 18.02,
+          "em_estoque": true,
+          "url": "https://books.toscrape.com/catalogue/maude-1883-1993she-grew-up-with-the-country_964/index.html"
+        },
+        {
+          "titulo": "In a Dark, Dark Wood",
+          "preco": 19.63,
+          "em_estoque": true,
+          "url": "https://books.toscrape.com/catalogue/in-a-dark-dark-wood_963/index.html"
+        },
+        {
+          "titulo": "Behind Closed Doors",
+          "preco": 52.22,
+          "em_estoque": true,
+          "url": "https://books.toscrape.com/catalogue/behind-closed-doors_962/index.html"
+        },
+        {
+          "titulo": "You can't bury them all: Poems",
+          "preco": 33.63,
+          "em_estoque": true,
+          "url": "https://books.toscrape.com/catalogue/you-cant-bury-them-all-poems_961/index.html"
+        }
+      ]
+    },
+    "metadata": {
+      "title": "All products | Books to Scrape - Sandbox",
+      "sourceURL": "https://books.toscrape.com/catalogue/page-2.html",
+      "url": "https://books.toscrape.com/catalogue/page-2.html",
+      "statusCode": 200,
+      "contentType": "text/html"
+    }
+  }
+}

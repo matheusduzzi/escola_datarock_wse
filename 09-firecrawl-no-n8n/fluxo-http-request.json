@@ -1,0 +1,77 @@
+{
+  "name": "Firecrawl no n8n: HTTP Request",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "0e5e0009-0000-4000-8000-000000000001",
+      "name": "Rodar agora",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.firecrawl.dev/v2/scrape",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"url\": \"https://books.toscrape.com/catalogue/page-1.html\",\n  \"formats\": [\n    {\n      \"type\": \"json\",\n      \"prompt\": \"Extraia todos os livros da lista da página, sem pular nenhum. Não invente valor que não está na página.\",\n      \"schema\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"livros\": {\n            \"type\": \"array\",\n            \"description\": \"Todos os livros da lista, na ordem em que aparecem na página.\",\n            \"items\": {\n              \"type\": \"object\",\n              \"properties\": {\n                \"titulo\": {\n                  \"type\": \"string\",\n                  \"description\": \"Título do livro como aparece na lista.\"\n                },\n                \"preco\": {\n                  \"type\": \"number\",\n                  \"description\": \"Preço em libras, só o número, sem o símbolo. Ex.: 51.77.\"\n                },\n                \"em_estoque\": {\n                  \"type\": \"boolean\",\n                  \"description\": \"true se o livro aparece como \\\"In stock\\\"; false se não.\"\n                },\n                \"url\": {\n                  \"type\": \"string\",\n                  \"description\": \"Endereço do link da página do livro.\"\n                }\n              },\n              \"required\": [\n                \"titulo\",\n                \"preco\",\n                \"em_estoque\",\n                \"url\"\n              ]\n            }\n          }\n        },\n        \"required\": [\n          \"livros\"\n        ]\n      }\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "0e5e0009-0000-4000-8000-000000000002",
+      "name": "Raspar pelo HTTP Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Código do nó Code \"Um item por livro\", no modo Run Once for All Items.\n// É o mesmo texto que está dentro dos dois fluxos da pasta: aqui fica mais fácil de ler.\n//\n// Entra: uma resposta do scrape do Firecrawl por página raspada.\n// Sai: um item por livro, com a página de onde ele veio.\n// Se a resposta não serve, o nó para com erro e nada segue adiante no fluxo.\nconst livrosSaida = [];\nfor (const item of $input.all()) {\n  const resposta = item.json;\n  const meta = (resposta.data && resposta.data.metadata) || {};\n  const pagina = meta.sourceURL || meta.url || '(página sem endereço)';\n  if (resposta.success !== true) {\n    throw new Error(`O Firecrawl não raspou ${pagina}: ${resposta.error || 'success não veio true'}`);\n  }\n  if (meta.statusCode !== 200) {\n    throw new Error(`A loja respondeu ${meta.statusCode} em ${pagina}. Nenhum livro dessa rodada segue.`);\n  }\n  const livros = resposta.data.json && resposta.data.json.livros;\n  if (!Array.isArray(livros)) {\n    throw new Error(`A resposta de ${pagina} veio sem a lista \"livros\". Veja o esquema no nó do scrape.`);\n  }\n  for (const livro of livros) {\n    livrosSaida.push({\n      json: {\n        pagina,\n        titulo: livro.titulo,\n        preco: livro.preco,\n        em_estoque: livro.em_estoque,\n        url: livro.url,\n      },\n    });\n  }\n}\nreturn livrosSaida;\n"
+      },
+      "id": "0e5e0009-0000-4000-8000-000000000003",
+      "name": "Um item por livro",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Rodar agora": {
+      "main": [
+        [
+          {
+            "node": "Raspar pelo HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Raspar pelo HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Um item por livro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

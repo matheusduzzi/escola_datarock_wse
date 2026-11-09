@@ -1,0 +1,9 @@
+{
+  "nome": "travel-1-padrao",
+  "categoria": "travel_2",
+  "nota": "Só a partida e o limit. O resto fica no padrão do Firecrawl.",
+  "crawl": {
+    "url": "https://books.toscrape.com/catalogue/category/books/travel_2/index.html",
+    "limit": 20
+  }
+}

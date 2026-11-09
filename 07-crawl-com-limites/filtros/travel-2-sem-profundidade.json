@@ -1,0 +1,14 @@
+{
+  "nome": "travel-2-sem-profundidade",
+  "categoria": "travel_2",
+  "nota": "Domínio inteiro, com dois padrões de caminho: a pasta da categoria e as páginas de livro.",
+  "crawl": {
+    "url": "https://books.toscrape.com/catalogue/category/books/travel_2/index.html",
+    "limit": 50,
+    "crawl_entire_domain": true,
+    "include_paths": [
+      "catalogue/category/books/travel_2/",
+      "catalogue/[^/]+_\\d+/index\\.html$"
+    ]
+  }
+}
